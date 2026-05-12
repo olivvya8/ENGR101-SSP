@@ -38,6 +38,44 @@ int checkForRuby(bool rubyDetected) {
 	return 0;
 }
 
+int detect(bool *rubyDetected, int redCount, long *totalRow, long *totalCol, int *prevCenterRow, int *prevCenterCol) {
+	
+  
+  	
+
+	//printf("Red Count: %d\n", redCount);
+	
+	if (redCount > 2000) {
+		*rubyDetected = true;
+		// ----------- Find centre -----------
+		int centerRow = *totalRow / redCount;
+    	int centerCol = *totalCol / redCount;
+
+		if (prevCenterRow != -1) {
+			int xChange = centerRow - *prevCenterRow;
+			int yChange = centerCol - *prevCenterCol;
+
+			// Find change in center pos
+			long disp = xChange * xChange + yChange * yChange;
+			printf("Displacement: %ld\n", disp);
+			if (disp > 10) {
+				printf("Ruby moved\n");
+			} else {
+				printf("Ruby still there\n");
+			}
+		}
+
+		// Update prev row and col
+		*prevCenterRow = centerRow;
+		*prevCenterCol = centerCol;
+	} else {
+		*rubyDetected = false;
+		printf("No ruby detected\n");
+	}
+
+	return 0;
+}
+
 int main() {
 	
 	 if (start_camera() != 0) {
@@ -48,10 +86,9 @@ int main() {
   //cout<<"Error: "<<err<<endl;
   //open_screen_stream();
   
-  bool rubyDetected = false;
-  
-  int prevCenterRow = -1;
-  int prevCenterCol = -1;
+	bool rubyDetected = false;
+	int prevCenterRow = -1;
+  	int prevCenterCol = -1;
 
   // make 1000 runs  
   for (int countrun = 0; countrun < 1000; countrun++) {
@@ -88,34 +125,8 @@ int main() {
 			//redness = (double)totRed/(3.0*(double)totInt);
 		}
 	}
-
-	if (redCount > 2000) {
-		rubyDetected = true;
-		// ----------- Find centre -----------
-		int centerRow = totalRow / redCount;
-    	int centerCol = totalCol / redCount;
-
-		if (prevCenterRow != -1) {
-			int xChange = centerRow - prevCenterRow;
-			int yChange = centerCol - prevCenterCol;
-
-			// Find change in center pos
-			double disp = xChange * xChange + yChange * yChange;
-			
-			if (disp > 10) {
-				printf("Ruby moved\n");
-			} else {
-				printf("Ruby still there\n");
-			}
-		}
-
-		// Update prev row and col
-		prevCenterRow = centerRow;
-		prevCenterCol = centerCol;
-	} else {
-		rubyDetected = false;
-		printf("No ruby detected\n");
-	}
+	//printf("Red Count: %d\n", redCount);
+	detect(&rubyDetected, redCount, &totalRow, &totalCol, &prevCenterRow, &prevCenterCol);
 
 	checkForRuby(rubyDetected);
 
