@@ -12,6 +12,9 @@
 
 #include <stdbool.h>
 #include <unistd.h>
+#include <math.h>
+
+//#define TESTING
 
 //using namespace std;
 
@@ -46,16 +49,15 @@ int main() {
   //open_screen_stream();
   
   bool rubyDetected = false;
+  
+  int prevCenterRow = -1;
+  int prevCenterCol = -1;
 
   // make 1000 runs  
   for (int countrun = 0; countrun < 1000; countrun++) {
 	take_picture();
 	display_picture();
 
-	//sleep(1);
-	//int totRed = 0;
-	//int totInt = 0;
-	//double redness = 0.0;
 	int redCount = 0;
 
 	// -------- Find centre of ruby -------------------
@@ -71,14 +73,15 @@ int main() {
 			get_pixel(row, col, &r, &g ,&b);
 			// Check if red pixel
 			if (r > 150 && g < 100 && b < 100 && r > g + 50 && r > b + 50) {
-				redCount ++;
-				totalRow += row;
-				totalCol += col;
-				if (redCount > 2000) {
-					printf("Ruby detected\n");
-					rubyDetected = true;
-					break;
-				}
+				redCount ++;		// Increment counter for red px
+				totalRow += row;	// Add row
+				totalCol += col;	// Add col
+
+				#if defined(TESTING)
+				printf("Red Counter: %d\n", redCount);
+				printf("totalRow: %ld\n", totalRow);
+				printf("TotalCol: %ld\n", totalCol);
+				#endif
 			}
 			//totRed = totRed + r;
 			//totInt = totInt + (r+g+b)/3;
@@ -86,20 +89,45 @@ int main() {
 		}
 	}
 
+	if (redCount > 2000) {
+		rubyDetected = true;
+		// ----------- Find centre -----------
+		int centerRow = totalRow / redCount;
+    	int centerCol = totalCol / redCount;
+
+		if (prevCenterRow != -1) {
+			int xChange = centerRow - prevCenterRow;
+			int yChange = centerCol - prevCenterCol;
+
+			// Find change in center pos
+			double disp = xChange * xChange + yChange * yChange;
+			
+			if (disp > 10) {
+				printf("Ruby moved\n");
+			} else {
+				printf("Ruby still there\n");
+			}
+		}
+
+		// Update prev row and col
+		prevCenterRow = centerRow;
+		prevCenterCol = centerCol;
+	} else {
+		rubyDetected = false;
+		printf("No ruby detected\n");
+	}
+
 	checkForRuby(rubyDetected);
 
-	// ----------- Find centre -----------
-	//*centerRow = totalRow / redCount;
-    //*centerCol = totalCol / redCount;
+	
 
 	//printf(" countrun: =%d\n",countrun);
 	//cout<<" Total red: "<<totRed<<endl;
 	//cout<<", Total intensity: "<<totInt<<endl;
 	//cout<<", redness : "<<redness<<endl<<endl;
 	//sleep1(1000); // slow down a bit to make display easier
-	
+  	
   }
-  //checkForRuby(rubyDetected);
   
   //close_screen_stream();
   return 0;
