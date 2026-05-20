@@ -1,0 +1,243 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#include <assert.h>
+
+// Mock get_pixel function for testing
+void (*mock_get_pixel)(int, int, unsigned char*, unsigned char*, unsigned char*) = NULL;
+
+void get_pixel(int row, int col, unsigned char *r, unsigned char *g, unsigned char *b) {
+    if (mock_get_pixel) {
+        mock_get_pixel(row, col, r, g, b);
+    }
+}
+
+void mock_no_ruby(int row, int col,
+                  unsigned char *r,
+                  unsigned char *g,
+                  unsigned char *b) {
+    *r = 10;
+    *g = 10;
+    *b = 10;
+}
+
+// Test 1: No ruby detected (insufficient red pixels)
+void test_no_ruby_detected() {
+    printf("Test 1: No ruby detected...\n");
+    
+    bool rubyDetected = false;
+    bool rubyMoved = false;
+    bool attemptedTheft = false;
+    int prevCenterRow = -1;
+    int prevCenterCol = -1;
+    
+    // Mock: all pixels are black/noise
+    mock_get_pixel = mock_no_ruby;
+    
+    trackRuby(&rubyDetected, &rubyMoved, &attemptedTheft, &prevCenterRow, &prevCenterCol);
+    
+    assert(rubyDetected == false);
+    assert(attemptedTheft == true);
+    printf("✓ Test 1 passed\n\n");
+}
+
+void mock_center_ruby(int row, int col,
+                      unsigned char *r,
+                      unsigned char *g,
+                      unsigned char *b) {
+
+    if (row >= 230 && row <= 250 &&
+        col >= 310 && col <= 330) {
+
+        *r = 200;
+        *g = 50;
+        *b = 50;
+    }
+    else {
+        *r = 10;
+        *g = 10;
+        *b = 10;
+    }
+}
+
+// Test 2: Ruby detected with no motion
+void test_ruby_detected_no_motion() {
+    printf("Test 2: Ruby detected, no motion...\n");
+    
+    bool rubyDetected = false;
+    bool rubyMoved = false;
+    bool attemptedTheft = false;
+    int prevCenterRow = 240;
+    int prevCenterCol = 320;
+    
+    // Mock: sufficient red pixels in center area
+    mock_get_pixel = mock_center_ruby;
+    
+    trackRuby(&rubyDetected, &rubyMoved, &attemptedTheft, &prevCenterRow, &prevCenterCol);
+    
+    assert(rubyDetected == true);
+    assert(rubyMoved == false);
+    assert(attemptedTheft == false);
+    printf("✓ Test 2 passed\n\n");
+}
+
+void mock_center_ruby_motion(int row, int col, unsigned char *r, unsigned char *g, unsigned char *b) {
+        if (row >= 350 && row <= 370 && col >= 350 && col <= 370) {
+            *r = 200; *g = 50; *b = 50;
+        } else {
+            *r = 10; *g = 10; *b = 10;
+        }
+    };
+
+// Test 3: Ruby detected with large displacement (high motion)
+void test_ruby_large_displacement() {
+    printf("Test 3: Ruby detected with large displacement...\n");
+    
+    bool rubyDetected = false;
+    bool rubyMoved = false;
+    bool attemptedTheft = false;
+    int prevCenterRow = 100;
+    int prevCenterCol = 100;
+    
+    // Mock: ruby moved to different location
+    mock_get_pixel = mock_center_ruby_motion;
+    
+    trackRuby(&rubyDetected, &rubyMoved, &attemptedTheft, &prevCenterRow, &prevCenterCol);
+    
+    assert(rubyDetected == true);
+    assert(rubyMoved == true);
+    assert(attemptedTheft == true);
+    printf("✓ Test 3 passed\n\n");
+}
+
+void mock_ruby_small_motion(int row, int col, unsigned char *r, unsigned char *g, unsigned char *b) {
+        if (row >= 245 && row <= 265 && col >= 325 && col <= 345) {
+            *r = 200; *g = 50; *b = 50;
+        } else {
+            *r = 10; *g = 10; *b = 10;
+        }
+    };
+
+// Test 4: Ruby detected with small displacement (motion accumulation)
+void test_ruby_small_displacement() {
+    printf("Test 4: Ruby with small displacement \n");
+    
+    bool rubyDetected = false;
+    bool rubyMoved = false;
+    bool attemptedTheft = false;
+    int prevCenterRow = 240;
+    int prevCenterCol = 320;
+    
+    // Mock: small movement from previous position
+    mock_get_pixel = mock_ruby_small_motion;
+    
+    // First call with small displacement
+    trackRuby(&rubyDetected, &rubyMoved, &attemptedTheft, &prevCenterRow, &prevCenterCol);
+    assert(rubyDetected == true);
+    
+    // Multiple small displacements should accumulate
+    for (int i = 0; i < 3; i++) {
+        trackRuby(&rubyDetected, &rubyMoved, &attemptedTheft, &prevCenterRow, &prevCenterCol);
+    }
+    
+    assert(rubyMoved == true);
+    assert(attemptedTheft == true);
+    printf("✓ Test 4 passed\n\n");
+}
+
+void mock_ruby_bright_lighting(int row, int col, unsigned char *r, unsigned char *g, unsigned char *b) {
+        if (row >= 200 && row <= 280 && col >= 250 && col <= 450) {
+            *r = 255; *g = 80; *b = 80;
+        } else {
+            *r = 20; *g = 20; *b = 20;
+        }
+    };
+
+// Test 5: Bright lighting conditions
+void test_ruby_bright_lighting() {
+    printf("Test 5: Ruby detection in bright lighting...\n");
+    
+    bool rubyDetected = false;
+    bool rubyMoved = false;
+    bool attemptedTheft = false;
+    int prevCenterRow = -1;
+    int prevCenterCol = -1;
+    
+    // Mock: bright red pixels
+    mock_get_pixel = mock_ruby_bright_lighting;
+    
+    trackRuby(&rubyDetected, &rubyMoved, &attemptedTheft, &prevCenterRow, &prevCenterCol);
+    
+    assert(rubyDetected == true);
+    printf("✓ Test 5 passed\n\n");
+}
+
+void mock_ruby_dim_lighting(int row, int col, unsigned char *r, unsigned char *g, unsigned char *b) {
+        if (row >= 200 && row <= 280 && col >= 250 && col <= 450) {
+            *r = 120; *g = 40; *b = 40;
+        } else {
+            *r = 20; *g = 20; *b = 20;
+        }
+    };
+
+// Test 6: Dim lighting conditions
+void test_ruby_dim_lighting() {
+    printf("Test 6: Ruby detection in dim lighting...\n");
+    
+    bool rubyDetected = false;
+    bool rubyMoved = false;
+    bool attemptedTheft = false;
+    int prevCenterRow = -1;
+    int prevCenterCol = -1;
+    
+    // Mock: dim red pixels
+    mock_get_pixel = mock_ruby_dim_lighting;
+    
+    trackRuby(&rubyDetected, &rubyMoved, &attemptedTheft, &prevCenterRow, &prevCenterCol);
+    
+    assert(rubyDetected == true);
+    printf("✓ Test 6 passed\n\n");
+}
+
+void mock_ruby_yellow_orange(int row, int col, unsigned char *r, unsigned char *g, unsigned char *b) {
+        if (row >= 200 && row <= 280 && col >= 250 && col <= 450) {
+            *r = 200; *g = 180; *b = 50;
+        } else {
+            *r = 20; *g = 20; *b = 20;
+        }
+    };
+
+// Test 7: Reject yellow/orange pixels
+void test_reject_yellow_orange() {
+    printf("Test 7: Reject yellow/orange pixels...\n");
+    
+    bool rubyDetected = false;
+    bool rubyMoved = false;
+    bool attemptedTheft = false;
+    int prevCenterRow = -1;
+    int prevCenterCol = -1;
+    
+    // Mock: yellow/orange pixels instead of pure red
+    mock_get_pixel = mock_ruby_yellow_orange;
+    
+    trackRuby(&rubyDetected, &rubyMoved, &attemptedTheft, &prevCenterRow, &prevCenterCol);
+    
+    assert(rubyDetected == false);
+    printf("✓ Test 7 passed\n\n");
+}
+
+// Run all tests
+int main() {
+    printf("=== Running trackRuby Unit Tests ===\n\n");
+    
+    test_no_ruby_detected();
+    test_ruby_detected_no_motion();
+    test_ruby_large_displacement();
+    test_ruby_small_displacement_accumulation();
+    test_ruby_bright_lighting();
+    test_ruby_dim_lighting();
+    test_reject_yellow_orange();
+    
+    printf("=== All tests passed! ===\n");
+    return 0;
+}
